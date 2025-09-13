@@ -1,59 +1,87 @@
-import { Client, GatewayIntentBits, Partials } from "discord.js";
-import express from "express";
-import translate from "@vitalets/google-translate-api";
+import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, REST, Routes, EmbedBuilder } from 'discord.js';
+import translate from '@vitalets/google-translate-api';
 
-// ✅ Express server for uptime
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get("/", (req, res) => res.send("✅ Ling Bot is running!"));
-app.listen(PORT, () => console.log(`🌍 Server online on port ${PORT}`));
+// -------- CONFIG --------
+const TOKEN = process.env.DISCORD_TOKEN;
+const AUTO_TRANSLATE_TO = process.env.AUTO_TRANSLATE_TO || 'en';
+const AUTO_TRANSLATE_CHANNELS = []; // leave empty to auto-translate all channels
 
-// ✅ Discord bot setup
+// -------- CLIENT --------
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ],
-  partials: [Partials.Channel]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  partials: [Partials.Message, Partials.Channel]
 });
 
-const TOKEN = process.env.TOKEN;
+// -------- SLASH COMMANDS --------
+const commands = [
+  new SlashCommandBuilder()
+    .setName('translate')
+    .setDescription('Translate text to a specified language')
+    .addStringOption(option =>
+      option.setName('text')
+            .setDescription('Text to translate')
+            .setRequired(true))
+    .addStringOption(option =>
+      option.setName('lang')
+            .setDescription('Target language (en, bn, fr, etc.)')
+            .setRequired(false))
+].map(cmd => cmd.toJSON());
 
-client.once("ready", () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+(async () => {
+  try {
+    await rest.put(Routes.applicationCommands(client.user?.id || 'placeholder'), { body: commands });
+    console.log('✅ Slash commands registered.');
+  } catch (err) {
+    console.error(err);
+  }
+})();
+
+// -------- BOT READY --------
+client.once('ready', () => {
+  console.log(`✅ Ling bot ready! Logged in as ${client.user.tag}`);
 });
 
-// ✅ Top 10 languages
-const supportedLanguages = {
-  zh: "Chinese",
-  es: "Spanish",
-  hi: "Hindi",
-  ar: "Arabic",
-  bn: "Bengali",
-  pt: "Portuguese",
-  ru: "Russian",
-  ja: "Japanese",
-  de: "German",
-  fr: "French"
-};
-
-// ✅ Listen for messages
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+// -------- AUTO-TRANSLATE --------
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
+  if (AUTO_TRANSLATE_CHANNELS.length && !AUTO_TRANSLATE_CHANNELS.includes(message.channel.id)) return;
 
   try {
-    const res = await translate(message.content, { to: "en" });
-
-    // Only handle if the detected language is in top 10
-    if (supportedLanguages[res.from.language.iso]) {
-      await message.reply(
-        `🌐 **${supportedLanguages[res.from.language.iso]} → English**:\n${res.text}`
-      );
+    const res = await translate(message.content, { to: AUTO_TRANSLATE_TO });
+    if (res.text && res.text !== message.content) {
+      const embed = new EmbedBuilder()
+        .setColor(0x1ABC9C)
+        .setAuthor({ name: `Auto-Translation (${AUTO_TRANSLATE_TO})` })
+        .setDescription(`**Original:** ${message.content}\n**Translated:** ${res.text}`);
+      await message.channel.send({ embeds: [embed] });
     }
   } catch (err) {
-    console.error("❌ Translation error:", err);
+    console.error('Translation error:', err);
   }
 });
 
+// -------- SLASH COMMAND --------
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
+  if (interaction.commandName !== 'translate') return;
+
+  const text = interaction.options.getString('text');
+  const lang = interaction.options.getString('lang') || AUTO_TRANSLATE_TO;
+
+  try {
+    const res = await translate(text, { to: lang });
+    const embed = new EmbedBuilder()
+      .setColor(0x7289DA)
+      .setAuthor({ name: `Translation (${lang})` })
+      .setDescription(`**Original:** ${text}\n**Translated:** ${res.text}`);
+    await interaction.reply({ embeds: [embed] });
+  } catch (err) {
+    console.error('Translation error:', err);
+    await interaction.reply('❌ Error translating text.');
+  }
+});
+
+// -------- LOGIN --------
 client.login(TOKEN);
