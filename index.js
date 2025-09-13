@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, REST, Routes, EmbedBuilder } from 'discord.js';
-import translate from '@vitalets/google-translate-api';
+import translate from 'google-translate-api-x';
 
 // -------- CONFIG --------
 const TOKEN = process.env.DISCORD_TOKEN;
