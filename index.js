@@ -1,18 +1,23 @@
 import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, REST, Routes, EmbedBuilder } from 'discord.js';
 import translate from 'google-translate-api-x';
 
-// -------- CONFIG --------
-const TOKEN = process.env.DISCORD_TOKEN;
+// ---------------- CONFIG ----------------
+const TOKEN = process.env.DISCORD_TOKEN; // Make sure this is set in Render environment variables
 const AUTO_TRANSLATE_TO = process.env.AUTO_TRANSLATE_TO || 'en';
-const AUTO_TRANSLATE_CHANNELS = []; // leave empty to auto-translate all channels
+const AUTO_TRANSLATE_CHANNELS = []; // Leave empty for all channels
 
-// -------- CLIENT --------
+if (!TOKEN) {
+  console.error('❌ DISCORD_TOKEN is not set in environment variables.');
+  process.exit(1);
+}
+
+// ---------------- CLIENT ----------------
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
   partials: [Partials.Message, Partials.Channel]
 });
 
-// -------- SLASH COMMANDS --------
+// ---------------- SLASH COMMANDS ----------------
 const commands = [
   new SlashCommandBuilder()
     .setName('translate')
@@ -31,19 +36,20 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
   try {
-    await rest.put(Routes.applicationCommands(client.user?.id || 'placeholder'), { body: commands });
+    await client.login(TOKEN); // Login before registering slash commands
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
     console.log('✅ Slash commands registered.');
   } catch (err) {
-    console.error(err);
+    console.error('❌ Error registering commands:', err);
   }
 })();
 
-// -------- BOT READY --------
+// ---------------- BOT READY ----------------
 client.once('ready', () => {
   console.log(`✅ Ling bot ready! Logged in as ${client.user.tag}`);
 });
 
-// -------- AUTO-TRANSLATE --------
+// ---------------- AUTO-TRANSLATE ----------------
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
   if (AUTO_TRANSLATE_CHANNELS.length && !AUTO_TRANSLATE_CHANNELS.includes(message.channel.id)) return;
@@ -58,11 +64,11 @@ client.on('messageCreate', async (message) => {
       await message.channel.send({ embeds: [embed] });
     }
   } catch (err) {
-    console.error('Translation error:', err);
+    console.error('❌ Translation error:', err);
   }
 });
 
-// -------- SLASH COMMAND --------
+// ---------------- SLASH COMMAND ----------------
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
   if (interaction.commandName !== 'translate') return;
@@ -78,10 +84,10 @@ client.on('interactionCreate', async (interaction) => {
       .setDescription(`**Original:** ${text}\n**Translated:** ${res.text}`);
     await interaction.reply({ embeds: [embed] });
   } catch (err) {
-    console.error('Translation error:', err);
+    console.error('❌ Translation error:', err);
     await interaction.reply('❌ Error translating text.');
   }
 });
 
-// -------- LOGIN --------
-client.login(TOKEN);
+
+  
