@@ -1,93 +1,67 @@
-import { Client, GatewayIntentBits, Partials, SlashCommandBuilder, REST, Routes, EmbedBuilder } from 'discord.js';
-import translate from 'google-translate-api-x';
+const { Client, GatewayIntentBits } = require("discord.js");
+const translate = require("@vitalets/google-translate-api");
 
-// ---------------- CONFIG ----------------
-const TOKEN = process.env.DISCORD_TOKEN; // Make sure this is set in Render environment variables
-const AUTO_TRANSLATE_TO = process.env.AUTO_TRANSLATE_TO || 'en';
-const AUTO_TRANSLATE_CHANNELS = []; // Leave empty for all channels
-
-if (!TOKEN) {
-  console.error('❌ DISCORD_TOKEN is not set in environment variables.');
-  process.exit(1);
-}
-
-// ---------------- CLIENT ----------------
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
-  partials: [Partials.Message, Partials.Channel]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-// ---------------- SLASH COMMANDS ----------------
-const commands = [
-  new SlashCommandBuilder()
-    .setName('translate')
-    .setDescription('Translate text to a specified language')
-    .addStringOption(option =>
-      option.setName('text')
-            .setDescription('Text to translate')
-            .setRequired(true))
-    .addStringOption(option =>
-      option.setName('lang')
-            .setDescription('Target language (en, bn, fr, etc.)')
-            .setRequired(false))
-].map(cmd => cmd.toJSON());
+const supportedLangs = require("@vitalets/google-translate-api/languages");
+const serverLangs = {}; // { guildId: langCode }
 
-const rest = new REST({ version: '10' }).setToken(TOKEN);
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
 
-(async () => {
-  try {
-    await client.login(TOKEN); // Login before registering slash commands
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-    console.log('✅ Slash commands registered.');
-  } catch (err) {
-    console.error('❌ Error registering commands:', err);
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const guildId = message.guild ? message.guild.id : null;
+
+  // Command to set server language
+  if (message.content.startsWith("!setlang")) {
+    const args = message.content.split(" ");
+    const lang = args[1];
+
+    if (!lang || !supportedLangs.isSupported(lang)) {
+      return message.reply("⚠ Usage: `!setlang <lang_code>`\nExample: `!setlang en`");
+    }
+
+    if (guildId) {
+      serverLangs[guildId] = lang;
+      return message.reply(`✅ Auto-translate language for this server set to **${lang}**`);
+    } else {
+      return message.reply("❌ Cannot set language in DMs.");
+    }
   }
-})();
 
-// ---------------- BOT READY ----------------
-client.once('ready', () => {
-  console.log(`✅ Ling bot ready! Logged in as ${client.user.tag}`);
-});
+  // Command: list supported languages
+  if (message.content === "!langs") {
+    const langList = Object.keys(supportedLangs.codes).join(", ");
+    return message.reply(
+      `🌍 Supported languages (${Object.keys(supportedLangs.codes).length}):\n${langList}`
+    );
+  }
 
-// ---------------- AUTO-TRANSLATE ----------------
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (AUTO_TRANSLATE_CHANNELS.length && !AUTO_TRANSLATE_CHANNELS.includes(message.channel.id)) return;
-
+  // Auto-translate all messages
   try {
-    const res = await translate(message.content, { to: AUTO_TRANSLATE_TO });
+    const targetLang = guildId && serverLangs[guildId] ? serverLangs[guildId] : "en";
+
+    // Auto-detect source language
+    const res = await translate(message.content, { to: targetLang });
+    
     if (res.text && res.text !== message.content) {
-      const embed = new EmbedBuilder()
-        .setColor(0x1ABC9C)
-        .setAuthor({ name: `Auto-Translation (${AUTO_TRANSLATE_TO})` })
-        .setDescription(`**Original:** ${message.content}\n**Translated:** ${res.text}`);
-      await message.channel.send({ embeds: [embed] });
+      message.reply(`🌍 **${targetLang.toUpperCase()}:** ${res.text}`);
     }
   } catch (err) {
-    console.error('❌ Translation error:', err);
+    console.error(err);
   }
 });
 
-// ---------------- SLASH COMMAND ----------------
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
-  if (interaction.commandName !== 'translate') return;
-
-  const text = interaction.options.getString('text');
-  const lang = interaction.options.getString('lang') || AUTO_TRANSLATE_TO;
-
-  try {
-    const res = await translate(text, { to: lang });
-    const embed = new EmbedBuilder()
-      .setColor(0x7289DA)
-      .setAuthor({ name: `Translation (${lang})` })
-      .setDescription(`**Original:** ${text}\n**Translated:** ${res.text}`);
-    await interaction.reply({ embeds: [embed] });
-  } catch (err) {
-    console.error('❌ Translation error:', err);
-    await interaction.reply('❌ Error translating text.');
-  }
-});
+client.login(process.env.DISCORD_TOKEN);
 
 
   
