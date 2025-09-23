@@ -1,15 +1,13 @@
 {
-  "name": "discord-auto-translator",
+  "name": "discord-google-translate-bot",
   "version": "1.0.0",
-  "description": "Discord bot auto-translates messages with slash commands",
+  "description": "Discord bot auto-replies with Google Translate links",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.15.3",
-    "@vitalets/google-translate-api": "^9.2.0",
-    "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
+    "express": "^4.19.2"
   }
 }
