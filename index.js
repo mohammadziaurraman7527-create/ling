@@ -56,4 +56,8 @@ client.once("ready", async () => {
 async function translateLibre(text, target = "en") {
   try {
     const res = await fetch("https://libretranslate.de/translate", {
-      me
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q: text,
+        source: "auto",
