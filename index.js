@@ -61,3 +61,95 @@ async function translateLibre(text, target = "en") {
       body: JSON.stringify({
         q: text,
         source: "auto",
+        target,
+        format: "text"
+      })
+    });
+    const data = await res.json();
+    return data.translatedText;
+  } catch (err) {
+    console.error("LibreTranslate failed:", err.message);
+    throw err;
+  }
+}
+
+async function translateCombined(text, target = "en") {
+  try {
+    const libre = await translateLibre(text, target);
+    return libre;
+  } catch {
+    try {
+      const google = await googleTranslate(text, { to: target });
+      return google.text;
+    } catch (err) {
+      console.error("Google Translate failed:", err.message);
+      return null;
+    }
+  }
+}
+
+// ===== Random language list for translation chain =====
+const languages = [
+  "en","fr","es","de","it","ja","ko","zh-Hans","ru","ar","pt","hi","bn","tr","vi","pl","nl","sv"
+];
+
+// ===== Message listener (auto-translate) =====
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.guild) return;
+
+  const targetLang = serverLangs.get(message.guild.id) || defaultLang;
+
+  try {
+    const translated = await translateCombined(message.content, targetLang);
+    if (translated && translated.toLowerCase() !== message.content.toLowerCase()) {
+      await message.reply(`🌐 Translated (${targetLang}): ${translated}`);
+    }
+  } catch (err) {
+    console.error("Translation error:", err.message);
+  }
+});
+
+// ===== Sleep function for throttling =====
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ===== Slash command listener =====
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const { commandName } = interaction;
+
+  if (commandName === "setlang") {
+    const lang = interaction.options.getString("language").toLowerCase();
+    serverLangs.set(interaction.guild.id, lang);
+    await interaction.reply(`✅ Translation language set to **${lang}** for this server.`);
+  } else if (commandName === "getlang") {
+    const lang = serverLangs.get(interaction.guild.id) || defaultLang;
+    await interaction.reply(`🌐 Current translation language: **${lang}**`);
+  } else if (commandName === "transchain") {
+    let text = interaction.options.getString("text");
+    let times = interaction.options.getInteger("times");
+
+    if (times > 100) times = 100; // safety limit
+    await interaction.reply(`⏳ Garbling your message through ${times} translations...`);
+
+    try {
+      for (let i = 0; i < times; i++) {
+        const randomLang = languages[Math.floor(Math.random() * languages.length)];
+        text = await translateCombined(text, randomLang);
+        await sleep(500); // small delay to avoid hitting Google rate limits
+      }
+      const finalLang = serverLangs.get(interaction.guild.id) || defaultLang;
+      text = await translateCombined(text, finalLang);
+
+      await interaction.followUp(`🌀 Translation chain result:\n${text}`);
+    } catch (err) {
+      console.error("Translation chain error:", err.message);
+      await interaction.followUp("⚠️ Error occurred during translation chain.");
+    }
+  }
+});
+
+// ===== Final login =====
+client.login(process.env.DISCORD_TOKEN);
