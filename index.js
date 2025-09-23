@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const translate = require("@vitalets/google-translate-api");
+const { translate } = require("@vitalets/google-translate-api"); // <-- FIXED
 const express = require("express");
 
 // ===== Express server to keep Render alive =====
@@ -30,7 +30,7 @@ const client = new Client({
   ],
 });
 
-const targetLang = "en"; // 🌍 Change this to any language code (bn, fr, hi, ja, etc.)
+const targetLang = "en"; // 🌍 Change to "bn", "fr", "ja", etc.
 
 client.on("ready", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
