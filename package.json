@@ -1,16 +1,13 @@
 {
   "name": "discord-auto-translator",
   "version": "1.0.0",
-  "description": "Discord bot that auto-translates messages per server using Google Translate",
+  "description": "A Discord bot that auto-translates messages to multiple languages",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "YourName",
-  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.0",
-    "@vitalets/google-translate-api": "^9.2.1"
+    "discord.js": "^14.15.3",
+    "@vitalets/google-translate-api": "^9.2.0"
   }
 }
-
