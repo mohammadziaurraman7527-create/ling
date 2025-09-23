@@ -1,8 +1,8 @@
 const { Client, GatewayIntentBits } = require("discord.js");
-const { translate } = require("@vitalets/google-translate-api"); // <-- FIXED
+const { translate } = require("@vitalets/google-translate-api");
 const express = require("express");
 
-// ===== Express server to keep Render alive =====
+// ===== Express server for Render & uptime =====
 const app = express();
 
 // Root shows bot status
@@ -14,10 +14,10 @@ app.get("/", (req, res) => {
   }
 });
 
-// Health check route for uptime services
+// Health check for uptime monitors
 app.get("/health", (req, res) => res.send("OK"));
 
-// Start express server
+// Start Express server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🌍 Web service running on port ${PORT}`));
 
@@ -30,7 +30,10 @@ const client = new Client({
   ],
 });
 
-const targetLang = "en"; // 🌍 Change to "bn", "fr", "ja", etc.
+const targetLang = "en"; // 🌍 Change to "bn", "fr", "hi", etc.
+
+// Throttle map to prevent TooManyRequests
+const pending = new Map(); // Map<userId, boolean>
 
 client.on("ready", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -39,16 +42,22 @@ client.on("ready", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
+  // Throttle per user: 1 message per 2 seconds
+  if (pending.has(message.author.id)) return;
+  pending.set(message.author.id, true);
+  setTimeout(() => pending.delete(message.author.id), 2000);
+
   try {
     const res = await translate(message.content, { to: targetLang });
 
+    // Skip if translation equals input
     if (res.text.toLowerCase() === message.content.toLowerCase()) return;
 
     await message.reply(
       `🌐 **Translated (${res.from.language.iso} → ${targetLang}):** ${res.text}`
     );
   } catch (err) {
-    console.error("Translation error:", err);
+    console.error("Translation error:", err.message);
   }
 });
 
