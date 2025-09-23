@@ -1,13 +1,15 @@
 {
-  "name": "discord-google-translate-bot",
+  "name": "discord-auto-translate-chain-bot",
   "version": "1.0.0",
-  "description": "Discord bot with Google Translate links and multi-translate chain",
+  "description": "Discord bot auto-translates messages and performs translation chains with Libre + Google",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.15.3",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "@vitalets/google-translate-api": "^8.0.2"
   }
 }
