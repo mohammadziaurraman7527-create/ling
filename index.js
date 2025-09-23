@@ -18,7 +18,7 @@ const client = new Client({
   ],
 });
 
-// ===== Server languages (default to English) =====
+// ===== Server languages (default English) =====
 const serverLangs = new Map();
 const defaultLang = "en";
 
@@ -28,12 +28,19 @@ const commands = [
     .setName("setlang")
     .setDescription("Set translation language for this server")
     .addStringOption(opt => opt.setName("language").setDescription("Language code, e.g., bn, fr").setRequired(true)),
+
   new SlashCommandBuilder()
     .setName("getlang")
-    .setDescription("Show current translation language for this server")
+    .setDescription("Show current translation language for this server"),
+
+  new SlashCommandBuilder()
+    .setName("transchain")
+    .setDescription("Get a link to multi-translate your message")
+    .addStringOption(opt => opt.setName("text").setDescription("Your message").setRequired(true)),
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   try {
@@ -44,7 +51,7 @@ client.once("ready", async () => {
   }
 });
 
-// ===== Message listener =====
+// ===== Message listener (auto Google Translate link) =====
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
@@ -68,9 +75,13 @@ client.on("interactionCreate", async (interaction) => {
   } else if (commandName === "getlang") {
     const lang = serverLangs.get(interaction.guild.id) || defaultLang;
     await interaction.reply(`🌐 Current translation language: **${lang}**`);
+  } else if (commandName === "transchain") {
+    const text = encodeURIComponent(interaction.options.getString("text"));
+    // Link to multi-translate web tool
+    const link = `https://lingojam.com/GoogleTranslateMulti?text=${text}`;
+    await interaction.reply(`🌐 Multi-translate your message here: ${link}`);
   }
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
 
