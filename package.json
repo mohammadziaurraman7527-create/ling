@@ -1,4 +1,4 @@
-{{
+{
   "name": "discord-auto-translator",
   "version": "1.0.0",
   "description": "Discord bot that auto-translates messages per server using Google Translate",
@@ -13,3 +13,4 @@
     "@vitalets/google-translate-api": "^8.0.2"
   }
 }
+
