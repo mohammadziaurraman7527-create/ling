@@ -1,7 +1,7 @@
 {
   "name": "discord-google-translate-bot",
   "version": "1.0.0",
-  "description": "Discord bot auto-replies with Google Translate links",
+  "description": "Discord bot with Google Translate links and multi-translate chain",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
