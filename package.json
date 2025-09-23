@@ -10,6 +10,6 @@
     "discord.js": "^14.15.3",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",
-    "@vitalets/google-translate-api": "^8.0.2"
+    "@vitalets/google-translate-api": "^7.0.0"
   }
 }
